@@ -3,13 +3,18 @@ package cucumber.runtime;
 import cucumber.api.SnippetType;
 import cucumber.api.StepDefinitionReporter;
 import cucumber.api.SummaryPrinter;
+import cucumber.api.Transformer;
+import cucumber.deps.com.thoughtworks.xstream.XStream;
+import cucumber.deps.com.thoughtworks.xstream.converters.SingleValueConverter;
 import cucumber.runtime.formatter.ColorAware;
 import cucumber.runtime.formatter.PluginFactory;
 import cucumber.runtime.formatter.StrictAware;
 import cucumber.runtime.io.ResourceLoader;
 import cucumber.runtime.model.CucumberFeature;
 import cucumber.runtime.model.PathWithLines;
+import cucumber.runtime.xstream.LocalizedXStreams;
 import gherkin.I18n;
+import gherkin.formatter.Filter;
 import gherkin.formatter.Formatter;
 import gherkin.formatter.Reporter;
 import gherkin.util.FixJava;
@@ -21,6 +26,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.regex.Pattern;
 
@@ -42,6 +48,7 @@ public class RuntimeOptions {
     private final List<String> junitOptions = new ArrayList<String>();
     private final PluginFactory pluginFactory;
     private final List<Object> plugins = new ArrayList<Object>();
+    private final LocalizedXStreams.LocalizedXStream localizedXStreams;
     private boolean dryRun;
     private boolean strict = false;
     private boolean monochrome = false;
@@ -79,6 +86,7 @@ public class RuntimeOptions {
     }
 
     public RuntimeOptions(Env env, PluginFactory pluginFactory, List<String> argv) {
+        this.localizedXStreams=new LocalizedXStreams(Thread.currentThread().getContextClassLoader()).get(Locale.US);
         this.pluginFactory = pluginFactory;
 
         argv = new ArrayList<String>(argv); // in case the one passed in is unmodifiable.
@@ -143,6 +151,8 @@ public class RuntimeOptions {
                 for (String option : arg.substring("--junit,".length()).split(",")) {
                     parsedJunitOptions.add(option);
                 }
+            } else if (arg.equals("--custom-filter")) {
+                addFilterConfig(args, parsedFilters);
             } else if (arg.startsWith("-")) {
                 printUsage();
                 throw new CucumberException("Unknown option: " + arg);
@@ -174,6 +184,25 @@ public class RuntimeOptions {
         parsedPluginData.updatePluginFormatterNames(pluginFormatterNames);
         parsedPluginData.updatePluginStepDefinitionReporterNames(pluginStepDefinitionReporterNames);
         parsedPluginData.updatePluginSummaryPrinterNames(pluginSummaryPrinterNames);
+    }
+
+    private void addFilterConfig(List<String> args, List<Object> parsedFilters) {
+        try {
+            Class<? extends Filter> filterClass = (Class<? extends Filter>)Class.forName(args.remove(0).trim());
+            CustomFilterConfig filterConfig = new CustomFilterConfig(filterClass);
+            if(args.get(0).trim().equals("--filter-param-type")){
+                args.remove(0);
+                SingleValueConverter converter = localizedXStreams.getSingleValueConverter(Class.forName(args.remove(0).trim()));
+                filterConfig.setTransformer(converter);
+            }
+            while(args.get(0).trim().equals("--filter-param")){
+                args.remove(0);
+                filterConfig.addFilterParam(args.remove(0).trim());
+            }
+            parsedFilters.add(filterConfig);
+        }catch(ClassNotFoundException e){
+            throw new CucumberException("Custom filter class not found: " + e.getMessage());
+        }
     }
 
     private boolean haveLineFilters(List<String> parsedFeaturePaths) {

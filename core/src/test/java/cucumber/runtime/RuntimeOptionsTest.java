@@ -1,6 +1,7 @@
 package cucumber.runtime;
 
 import gherkin.formatter.Reporter;
+import gherkin.formatter.TagFilter;
 import gherkin.formatter.model.Background;
 import gherkin.formatter.model.Examples;
 import gherkin.formatter.model.Feature;
@@ -69,6 +70,16 @@ public class RuntimeOptionsTest {
         RuntimeOptions options = new RuntimeOptions("--tags @keep_this somewhere_else:3");
         assertEquals(asList("somewhere_else:3"), options.getFeaturePaths());
         assertEquals(Arrays.<Object>asList("@keep_this"), options.getFilters());
+    }
+
+    @Test
+    public void creates_custom_filter_configs() {
+        RuntimeOptions options = new RuntimeOptions("--custom-filter " + TagFilter.class.getName() + " --filter-param @tag1 --filter-param @tag2 somewhere");
+        assertEquals(asList("somewhere"), options.getFeaturePaths());
+        assertEquals(1, options.getFilters().size());
+        CustomFilterConfig config = (CustomFilterConfig) options.getFilters().get(0);
+        assertEquals(TagFilter.class, config.getFilterClass());
+        assertEquals(Arrays.asList("@tag1", "@tag2"), config.getFilterParams());
     }
 
     @Test

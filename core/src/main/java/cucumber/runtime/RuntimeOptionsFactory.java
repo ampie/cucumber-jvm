@@ -1,6 +1,7 @@
 package cucumber.runtime;
 
 import cucumber.api.CucumberOptions;
+import cucumber.api.CustomFilter;
 import cucumber.runtime.formatter.PluginFactory;
 import cucumber.runtime.io.MultiLoader;
 
@@ -41,6 +42,7 @@ public class RuntimeOptionsFactory {
                 addGlue(options, args);
                 addFeatures(options, args);
                 addJunitOptions(options, args);
+                addCustomFilters(options,args);
             }
         }
         addDefaultFeaturePathIfNoFeaturePathIsSpecified(args, clazz);
@@ -138,6 +140,20 @@ public class RuntimeOptionsFactory {
     private void addJunitOptions(CucumberOptions options, List<String> args) {
         for (String junitOption : options.junit()) {
             args.add("--junit," + junitOption);
+        }
+    }
+    private void addCustomFilters(CucumberOptions options, List<String> args) {
+        for (CustomFilter filter : options.customFilters()) {
+            args.add("--custom-filter");
+            args.add(filter.filterClass().getName());
+            if(filter.parameterType()!=null){
+                args.add("--filter-param-type");
+                args.add(filter.parameterType().getName());
+            }
+            for (String filterParam : filter.filterParams()) {
+                args.add("--filter-param");
+                args.add(filterParam);
+            }
         }
     }
 

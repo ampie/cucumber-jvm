@@ -1,11 +1,12 @@
 package cucumber.runtime;
 
 import cucumber.api.CucumberOptions;
+import cucumber.api.CustomFilter;
 import cucumber.api.SnippetType;
-import gherkin.formatter.JSONFormatter;
-import gherkin.formatter.PrettyFormatter;
+import gherkin.formatter.*;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -13,9 +14,8 @@ import java.util.regex.Pattern;
 import static cucumber.runtime.RuntimeOptionsFactory.packageName;
 import static cucumber.runtime.RuntimeOptionsFactory.packagePath;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.*;
 
 public class RuntimeOptionsFactoryTest {
     @Test
@@ -123,6 +123,23 @@ public class RuntimeOptionsFactoryTest {
 
         assertTrue(runtimeOptions.isMonochrome());
     }
+    @Test
+    public void create_with_custom_filters(){
+        RuntimeOptionsFactory runtimeOptionsFactory = new RuntimeOptionsFactory(ClassWithCustomFilters.class);
+        RuntimeOptions runtimeOptions = runtimeOptionsFactory.create();
+
+        assertThat(runtimeOptions.getFilters().size(), is(3));
+        CustomFilterConfig firstConfig = (CustomFilterConfig)runtimeOptions.getFilters().get(0);
+        assertSame(TagFilter.class, firstConfig.getFilterClass());
+        assertEquals(Arrays.asList("@tag1","@tag2"),firstConfig.getFilterParams());
+        CustomFilterConfig secondConfig = (CustomFilterConfig)runtimeOptions.getFilters().get(1);
+        assertSame(PatternFilter.class,secondConfig.getFilterClass());
+        assertEquals(2, secondConfig.getFilterParams().size());
+        assertEquals("Feature1", ((Pattern)secondConfig.getFilterParams().get(0)).pattern());
+        CustomFilterConfig thirdConfig = (CustomFilterConfig)runtimeOptions.getFilters().get(2);
+        assertSame(LineFilter.class,thirdConfig.getFilterClass());
+        assertEquals(Arrays.asList(1,2),thirdConfig.getFilterParams());
+    }
 
     @Test
     public void create_with_junit_options() {
@@ -207,6 +224,14 @@ public class RuntimeOptionsFactoryTest {
 
     @CucumberOptions(junit = {"option1", "option2=value"})
     static class ClassWithJunitOption {
+        // empty
+    }
+    @CucumberOptions(customFilters = {
+            @CustomFilter(filterClass=TagFilter.class, filterParams={"@tag1","@tag2"}),
+            @CustomFilter(filterClass=PatternFilter.class, filterParams={"Feature1","Feature2"},parameterType = Pattern.class),
+            @CustomFilter(filterClass=LineFilter.class, filterParams={"1","2"},parameterType = Integer.class)
+    })
+    static class ClassWithCustomFilters {
         // empty
     }
 }

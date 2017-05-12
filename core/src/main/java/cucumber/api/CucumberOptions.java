@@ -70,4 +70,12 @@ public @interface CucumberOptions {
      */
     String[] junit() default {};
 
+
+    /**
+     * @return custom filters that will be used to filter scenarios
+     */
+    CustomFilter[] customFilters() default {};
+
+
+
 }

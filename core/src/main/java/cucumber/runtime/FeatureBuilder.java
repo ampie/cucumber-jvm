@@ -123,7 +123,7 @@ public class FeatureBuilder implements Formatter {
 
         Formatter formatter = this;
         if (!filters.isEmpty()) {
-            formatter = new FilterFormatter(this, filters);
+            formatter = new CustomFilterFormatter(this, filters);
         }
         Parser parser = new Parser(formatter);
 
